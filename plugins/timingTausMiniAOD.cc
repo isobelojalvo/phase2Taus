@@ -612,30 +612,31 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
      tau.addUserFloat("tauDZ",   dz);
      tau.addUserFloat("tauDXY",  dxy);
      tau.addUserFloat("tauDT",   dt);
+     const double res_det = 0.030; // ns
      //const float dt = std::abs(time - thevtx.t());
 
-     newChIso0 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 0, newChIso0_ntracks );
-     newChIso1 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 1, newChIso1_ntracks );
-     newChIso2 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 2, newChIso2_ntracks );
-     newChIso3 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 3, newChIso3_ntracks );
-     newChIso4 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 4, newChIso4_ntracks );
-     newChIso5 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 5, newChIso5_ntracks );
-     newChIso6 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 6, newChIso6_ntracks );
-     newChIso7 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 7, newChIso7_ntracks );
-     newChIso8 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 8, newChIso8_ntracks );
-     newChIso9 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 9, newChIso9_ntracks );
-     newChIso10 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 10, newChIso10_ntracks );
-     newChIso11 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 11, newChIso11_ntracks );
-     newChIso12 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 12, newChIso12_ntracks );
-     newChIso13 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 13, newChIso13_ntracks );
-     newChIso14 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 14, newChIso14_ntracks );
-     newChIso15 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 15, newChIso15_ntracks );
-     newChIso16 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 16, newChIso16_ntracks );
-     newChIso17 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 17, newChIso17_ntracks );
-     newChIso18 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 18, newChIso18_ntracks );
-     newChIso19 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 19, newChIso19_ntracks );
-     newChIso20 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 20, newChIso20_ntracks );
-     newChIsoOther = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 100, newChIsoOther_ntracks);
+     newChIso0 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 0*res_det, newChIso0_ntracks );
+     newChIso1 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 1*res_det, newChIso1_ntracks );
+     newChIso2 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 2*res_det, newChIso2_ntracks );
+     newChIso3 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 3*res_det, newChIso3_ntracks ); // this is the nominal cut, 3 sigma
+     newChIso4 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 4*res_det, newChIso4_ntracks );
+     newChIso5 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 5*res_det, newChIso5_ntracks );
+     newChIso6 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 6*res_det, newChIso6_ntracks );
+     newChIso7 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 7*res_det, newChIso7_ntracks );
+     newChIso8 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 8*res_det, newChIso8_ntracks );
+     newChIso9 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 9*res_det, newChIso9_ntracks );
+     newChIso10 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 10*res_det, newChIso10_ntracks );
+     newChIso11 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 11*res_det, newChIso11_ntracks );
+     newChIso12 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 12*res_det, newChIso12_ntracks );
+     newChIso13 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 13*res_det, newChIso13_ntracks );
+     newChIso14 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 14*res_det, newChIso14_ntracks );
+     newChIso15 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 15*res_det, newChIso15_ntracks );
+     newChIso16 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 16*res_det, newChIso16_ntracks );
+     newChIso17 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 17*res_det, newChIso17_ntracks );
+     newChIso18 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 18*res_det, newChIso18_ntracks );
+     newChIso19 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 19*res_det, newChIso19_ntracks );
+     newChIso20 = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 20*res_det, newChIso20_ntracks );
+     newChIsoOther = getTimedCHIsoSum(packedLeadTauCand, packedCHIsoTauCands , 100*res_det, newChIsoOther_ntracks);
 
      
 
@@ -1147,7 +1148,7 @@ double timingTausMiniAOD::getTimedCHIsoSum( pat::PackedCandidate const* leadTauC
   for( auto cand : isolationCands ) {
     //std::cout<<"diff time: "<<cand->time()*10-leadTauCand->time()*10<<std::endl;
     //if(fabs(cand->dtimeAssociatedPV()*10-leadTauCand->dtimeAssociatedPV()*10) < interval){
-    if(fabs(cand->time()*10-leadTauCand->time()*10) < interval){
+    if(std::abs(cand->time()-leadTauCand->time()) < interval){
       sum += cand->pt();
       n_tracks +=1;
     }
