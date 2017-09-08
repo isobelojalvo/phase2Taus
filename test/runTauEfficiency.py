@@ -5,8 +5,9 @@ from FWCore.ParameterSet.VarParsing import VarParsing
 
 #input cmsRun options
 options = VarParsing ('analysis')
-
-options.outputFile = "MiniAOD_effi_80x_DYtoLL.root"
+options.register('inputFile', [], VarParsing.multiplicity.list, VarParsing.varType.string, 'Manual file list input, will query DAS if empty')
+options.register('inputFileList', '', VarParsing.multiplicity.singleton, VarParsing.varType.string, 'Manual file list input, will query DAS if empty')
+options.outputFile = "MiniAOD_effi_93x_HtoTauTau.root"
 options.parseArguments()
 
 #name the process
@@ -17,7 +18,18 @@ process.MessageLogger.cerr.threshold = cms.untracked.string('INFO')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, '81X_mcRun2_asymptotic_v8', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, '90X_upgrade2023_realistic_v1', '')
+
+if len(options.inputFile) is 0 and options.inputFileList is '' :
+    inputFile = util.getFilesForRun(options.runNumber, options.dataStream)
+elif len(options.inputFileList) > 0 :
+    with open(options.inputFileList) as f :
+        inputFile = list((line.strip() for line in f))
+else :
+    inputFile = cms.untracked.vstring(options.inputFile)
+    if len(inputFile) is 0 :
+        raise Exception('No files found for dataset %s run %d' % (options.dataStream, options.runNumber))
+
 
 #how many events to run over
 process.maxEvents = cms.untracked.PSet(
@@ -25,7 +37,7 @@ process.maxEvents = cms.untracked.PSet(
 )
 
 process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring(options.inputFiles),
+    fileNames = cms.untracked.vstring(inputFile),
 )
 
 

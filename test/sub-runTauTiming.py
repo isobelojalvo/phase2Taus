@@ -20,15 +20,15 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, '90X_upgrade2023_realistic_v1', '')
 
-if len(options.inputFile) is 0 and options.inputFileList is '' :
-    inputFile = util.getFilesForRun(options.runNumber, options.dataStream)
-elif len(options.inputFileList) > 0 :
-    with open(options.inputFileList) as f :
-        inputFile = list((line.strip() for line in f))
-else :
-    inputFile = cms.untracked.vstring(options.inputFile)
-    if len(inputFile) is 0 :
-        raise Exception('No files found for dataset %s run %d' % (options.dataStream, options.runNumber))
+#if len(options.inputFile) is 0 and options.inputFileList is '' :
+#    inputFile = util.getFilesForRun(options.runNumber, options.dataStream)
+#elif len(options.inputFileList) > 0 :
+#    with open(options.inputFileList) as f :
+#        inputFile = list((line.strip() for line in f))
+#else :
+#    inputFile = cms.untracked.vstring(options.inputFile)
+#    if len(inputFile) is 0 :
+#        raise Exception('No files found for dataset %s run %d' % (options.dataStream, options.runNumber))
 
 
 #how many events to run over
@@ -36,9 +36,9 @@ process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(-1)
 )
 
-process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring(inputFile),
-)
+#process.source = cms.Source("PoolSource",
+#    fileNames = cms.untracked.vstring(inputFile),
+#)
 
 
 ##################################################
