@@ -184,7 +184,7 @@ phase2Taus::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       genTauPt_=-10;
       genTauEta_=-10;
      
-     nvtx_=-10;
+      //nvtx_=-10;
      dmf_=-10;
      goodReco_=0;
      genTauMatch_=0;

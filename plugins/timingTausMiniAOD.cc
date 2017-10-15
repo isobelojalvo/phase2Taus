@@ -78,6 +78,8 @@
 // constructor "usesResource("TFileService");"
 // This will improve performance in multithreaded jobs.
 
+using std::vector;
+
 class timingTausMiniAOD : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
   typedef reco::tau::cone::DeltaRPtrFilter<reco::PFCandidatePtr> DRFilter;
 
@@ -91,12 +93,14 @@ class timingTausMiniAOD : public edm::one::EDAnalyzer<edm::one::SharedResources>
    private:
   edm::EDGetTokenT<reco::VertexCollection> vtxToken_;
   edm::EDGetTokenT<pat::TauCollection>     tauToken_;
-  edm::EDGetTokenT<std::vector<pat::Jet> >    jetSrc_;
+  edm::EDGetTokenT<vector<pat::Muon> >     muonToken_;
+  edm::EDGetTokenT<vector<pat::Electron> > electronToken_;
+  edm::EDGetTokenT<vector<pat::Jet> > jetSrc_;
   edm::EDGetTokenT<reco::GenJetCollection> genJetSrc_;
   std::string tauID_;
-  edm::EDGetTokenT<std::vector <reco::GenParticle> > prunedGenToken_;
+  edm::EDGetTokenT<vector <reco::GenParticle> > prunedGenToken_;
 
-  edm::EDGetTokenT<std::vector<pat::PackedCandidate> > pfCand_token;
+  edm::EDGetTokenT<vector<pat::PackedCandidate> > pfCand_token;
   edm::ParameterSet qualityCutsPSet_;
   std::auto_ptr<reco::tau::RecoTauQualityCuts> pileupQcutsPUTrackSelection_;
 
@@ -104,11 +108,14 @@ class timingTausMiniAOD : public edm::one::EDAnalyzer<edm::one::SharedResources>
   TTree* jetTree;
   double tauPt_;
   double tauEta_;
+  double tauPhi_;
   double jetPt_;
   double jetEta_;
+  double jetPhi_;
   double tauMass_;
   double genTauPt_;
   double genTauEta_;
+  double genTauPhi_;
   double vtxX_, vtxY_, vtxZ_, vtxT_;
   double taudXY_, taudZ_, taudT_;
   int vtxIndex_;
@@ -171,19 +178,35 @@ class timingTausMiniAOD : public edm::one::EDAnalyzer<edm::one::SharedResources>
   double nhIso_;
   double sigPhoIso_;
 
+  double nMatchedTaus_;
+
   int nvtx_;
   int dmf_;
   int goodReco_;
   int genTauMatch_;
+  int genMuonMatch_;
+  int genElectronMatch_;
   int jetTauMatch_;
   int genJetMatch_;
+  double isAMuon_;
+  double isAElectron_;
   double genJetPt_;
   double genJetEta_;
+  double genJetPhi_;
 
-  reco::Candidate::LorentzVector GetVisibleP4(std::vector<const reco::GenParticle*>& daughters);
-  void findDaughters(const reco::GenParticle* mother, std::vector<const reco::GenParticle*>& daughters);
+  double jet_NHF_;
+  double jet_NEMF_;
+  double jet_CHF_;
+  double jet_MUF_;
+  double jet_CEMF_;
+  double jet_NumConst_;
+  double jet_NumNeutralParticles_;
+  double jet_CHM_;
+
+  reco::Candidate::LorentzVector GetVisibleP4(vector<const reco::GenParticle*>& daughters);
+  void findDaughters(const reco::GenParticle* mother, vector<const reco::GenParticle*>& daughters);
   bool isNeutrino(const reco::Candidate* daughter);
-  double getTimedCHIsoSum( pat::PackedCandidate const* leadTauCand, std::vector<pat::PackedCandidate const*> isolationCands, float interval, float &n_tracks);
+  double getTimedCHIsoSum( pat::PackedCandidate const* leadTauCand, vector<pat::PackedCandidate const*> isolationCands, float interval, float &n_tracks);
       virtual void beginJob() override;
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
       virtual void endJob() override;
@@ -204,12 +227,14 @@ class timingTausMiniAOD : public edm::one::EDAnalyzer<edm::one::SharedResources>
 // constructors and destructor
 //
 timingTausMiniAOD::timingTausMiniAOD(const edm::ParameterSet& iConfig):
-  vtxToken_      (consumes<reco::VertexCollection>          (iConfig.getParameter<edm::InputTag>("vertices"))),
-  tauToken_      (consumes<pat::TauCollection>              (iConfig.getParameter<edm::InputTag>("taus"))),
-  jetSrc_        (consumes<std::vector<pat::Jet> >    (iConfig.getParameter<edm::InputTag>("jets"))),
-  genJetSrc_     (consumes<reco::GenJetCollection>          (iConfig.getParameter<edm::InputTag>("genJets"))),
-  prunedGenToken_(consumes<std::vector<reco::GenParticle> > (iConfig.getParameter<edm::InputTag>("pruned"))),
-  pfCand_token   (consumes<std::vector<pat::PackedCandidate> > (iConfig.getParameter<edm::InputTag>("pfCands"))),
+  vtxToken_      (consumes<reco::VertexCollection>             (iConfig.getParameter<edm::InputTag>("vertices"))),
+  tauToken_      (consumes<pat::TauCollection>                 (iConfig.getParameter<edm::InputTag>("taus"))),
+  muonToken_     (consumes<vector<pat::Muon> >            (iConfig.getParameter<edm::InputTag>("muons"))),
+  electronToken_ (consumes<vector<pat::Electron> >        (iConfig.getParameter<edm::InputTag>("electrons"))),
+  jetSrc_        (consumes<vector<pat::Jet> >             (iConfig.getParameter<edm::InputTag>("jets"))),
+  genJetSrc_     (consumes<reco::GenJetCollection>             (iConfig.getParameter<edm::InputTag>("genJets"))),
+  prunedGenToken_(consumes<vector<reco::GenParticle> >    (iConfig.getParameter<edm::InputTag>("pruned"))),
+  pfCand_token   (consumes<vector<pat::PackedCandidate> > (iConfig.getParameter<edm::InputTag>("pfCands"))),
   qualityCutsPSet_(iConfig.getParameter<edm::ParameterSet>("qualityCuts")) 
 {
    //now do what ever initialization is needed
@@ -221,9 +246,14 @@ timingTausMiniAOD::timingTausMiniAOD(const edm::ParameterSet& iConfig):
    tree = fs->make<TTree>("Ntuple", "Ntuple");  
    tree->Branch("tauPt",       &tauPt_,       "tauPt/D"        );
    tree->Branch("tauEta",      &tauEta_,      "tauEta/D"       );
+   tree->Branch("tauPhi",      &tauPhi_,      "tauPhi/D"       );
    tree->Branch("genTauPt",    &genTauPt_,    "genTauPt/D"     );
+   tree->Branch("genTauPhi",   &genTauPhi_,  "genTauPhi/D"  );
    tree->Branch("genTauEta",   &genTauEta_,   "genTauEta/D"    );
    tree->Branch("genTauMatch", &genTauMatch_, "genTauMatch/I"  );
+   tree->Branch("genMuonMatch", &genMuonMatch_, "genMuonMatch/I"  );
+   tree->Branch("genElectronMatch", &genElectronMatch_, "genElectronMatch/I"  );
+   tree->Branch("nMatchedTaus",&nMatchedTaus_,"nvtx/D"         );
    tree->Branch("nvtx",        &nvtx_,        "nvtx/I"         );
    tree->Branch("vtxX",        &vtxX_,        "vtxX/D"         );
    tree->Branch("vtxY",        &vtxY_,        "vtxY/D"         );
@@ -303,15 +333,23 @@ timingTausMiniAOD::timingTausMiniAOD(const edm::ParameterSet& iConfig):
    jetTree = fs->make<TTree>(      "jetNtuple",   "jetNtuple"       );
    jetTree->Branch("tauPt",       &tauPt_,       "tauPt/D"        );
    jetTree->Branch("tauEta",      &tauEta_,      "tauEta/D"       );
+   jetTree->Branch("tauPhi",      &tauPhi_,      "tauPhi/D"       );
    jetTree->Branch("genTauPt",    &genTauPt_,    "genTauPt/D"     );
    jetTree->Branch("genTauEta",   &genTauEta_,   "genTauEta/D"    );
+   jetTree->Branch("genTauPhi",   &genTauPhi_,   "genTauPhi/D"    );
    jetTree->Branch("genTauMatch", &genTauMatch_, "genTauMatch/I"  );
+   jetTree->Branch("genMuonMatch", &genMuonMatch_, "genMuonMatch/I"  );
+   jetTree->Branch("genElectronMatch", &genElectronMatch_, "genElectronMatch/I"  );
+   jetTree->Branch("isAMuon",     &isAMuon_,     "isAMuon_/D"     );
+   jetTree->Branch("isAElectron", &isAElectron_, "isAElectron_/D" );
    jetTree->Branch("jetPt",        &jetPt_,       "jetPt_/D"        );
    jetTree->Branch("jetEta",       &jetEta_,      "jetEta_/D"       );
+   jetTree->Branch("jetPhi",       &jetPhi_,      "jetPhi_/D"       );
    jetTree->Branch("jetTauMatch",  &jetTauMatch_, "jetTauMatch_/I"  );
    jetTree->Branch("genJetMatch",  &genJetMatch_, "genJetMatch_/I"  );
    jetTree->Branch("genJetPt",     &genJetPt_,    "genJetPt_/D"  );
    jetTree->Branch("genJetEta",    &genJetEta_,   "genJetEta_/D"  );
+   jetTree->Branch("genJetPhi",    &genJetPhi_,   "genJetPhi_/D"  );
    jetTree->Branch("nvtx",        &nvtx_,        "nvtx/I"         );
    jetTree->Branch("vtxX",        &vtxX_,        "vtxX/D"         );
    jetTree->Branch("vtxY",        &vtxY_,        "vtxY/D"         );
@@ -386,6 +424,15 @@ timingTausMiniAOD::timingTausMiniAOD(const edm::ParameterSet& iConfig):
    jetTree->Branch("nhIso_" ,                   &nhIso_,                  "nhIso/D"                  );
    jetTree->Branch("sigPhoIso_" ,               &sigPhoIso_,              "sigPhoIso/D"              );
 
+   jetTree->Branch("jet_NHF" ,                  &jet_NHF_,                 "NHF/D"                 );
+   jetTree->Branch("jet_NEMF" ,                 &jet_NEMF_,                "NEMF/D"                );
+   jetTree->Branch("jet_CHF" ,                  &jet_CHF_,                 "CHF/D"                 );
+   jetTree->Branch("jet_MUF" ,                  &jet_MUF_,                 "MUF/D"                 );
+   jetTree->Branch("jet_CEMF" ,                 &jet_CEMF_,                "CEMF/D"                );
+   jetTree->Branch("jet_NumConst" ,             &jet_NumConst_,            "NumConst/D"            );
+   jetTree->Branch("jet_NumNeutralParticles",   &jet_NumNeutralParticles_, "NumNeutralParticles/D" );
+   jetTree->Branch("jet_CHM" ,                  &jet_CHM_,                 "CHM/D"                 );
+
 }
 
 
@@ -407,11 +454,12 @@ void
 timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
+
    //initialize tau isolation
    std::auto_ptr<reco::tau::RecoTauQualityCuts> pileupQcutsGeneralQCuts_;
 
    edm::ParameterSet isolationQCuts = qualityCutsPSet_.getParameterSet("isolationQualityCuts");
-   std::vector<reco::PFCandidatePtr> chargedPFCandidatesInEvent_;
+   vector<reco::PFCandidatePtr> chargedPFCandidatesInEvent_;
    /*
    edm::Handle<vector<pat::PackedCandidate> > pfCandidates;
    iEvent.getByToken(pfCand_token, pfCandidates);
@@ -432,21 +480,33 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
    nvtx_=vtxs->size();
    edm::Handle<pat::TauCollection> taus;
    iEvent.getByToken(tauToken_, taus);
-   edm::Handle<std::vector<reco::GenParticle> > genParticles;
+
+   edm::Handle<vector<pat::Muon> > muons;
+   iEvent.getByToken(muonToken_, muons);
+
+   edm::Handle<vector<pat::Electron> > electrons;
+   iEvent.getByToken(electronToken_, electrons);
+
+   edm::Handle<vector<reco::GenParticle> > genParticles;
    iEvent.getByToken(prunedGenToken_, genParticles);
-   std::vector<const reco::GenParticle*> GenTaus;
+   vector<const reco::GenParticle*> GenTaus;
+   vector<const reco::GenParticle*> GenMuons;
+   vector<const reco::GenParticle*> GenElectrons;
+
 
    std::unique_ptr<pat::TauCollection> newTaus(new pat::TauCollection);
 
-   for(std::vector<reco::GenParticle>::const_iterator genParticle = genParticles->begin(); genParticle != genParticles->end(); genParticle++){
+   for(vector<reco::GenParticle>::const_iterator genParticle = genParticles->begin(); genParticle != genParticles->end(); genParticle++){
      if(TMath::Abs(genParticle->pdgId()) == 15) GenTaus.push_back(&(*genParticle));
+     if(TMath::Abs(genParticle->pdgId()) == 13) GenMuons.push_back(&(*genParticle));
+     if(TMath::Abs(genParticle->pdgId()) == 11) GenElectrons.push_back(&(*genParticle));
    }
 
    //get objects
-   Handle <std::vector<pat::Jet> > JetObjects;
+   Handle <vector<pat::Jet> > JetObjects;
    if(!iEvent.getByToken(jetSrc_, JetObjects))
      std::cout<<"Error getting Jets"<<std::endl;
-   std::vector<pat::Jet> Jets;
+   vector<pat::Jet> Jets;
 
    for (unsigned int iJet = 0; iJet < JetObjects->size() ; ++iJet){
      //reco::PFJetRef jetCand(JetObjects, iJet);
@@ -454,14 +514,14 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
      if(jetCand.pt() < 18 )continue;
      bool isATau=false;
      for(auto genTau : GenTaus){
-       std::vector<const reco::GenParticle*> genTauDaughters;
+       vector<const reco::GenParticle*> genTauDaughters;
        findDaughters(genTau, genTauDaughters);
        reco::Candidate::LorentzVector genTauVis = GetVisibleP4(genTauDaughters);
        genTauPt_  = (float) genTauVis.pt();
        genTauEta_ = (float) genTauVis.eta();
-       if (reco::deltaR(jetCand.eta(),jetCand.phi(),genTauVis.eta(),genTauVis.phi()) < 0.5)
+       if (reco::deltaR(jetCand.eta(),jetCand.phi(),genTauVis.eta(),genTauVis.phi()) < 0.5){
 	 isATau=true;
-       
+       }
      }
      if(!isATau)
        Jets.push_back(jetCand);
@@ -513,14 +573,14 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     double puPtForDB;
     std::pair<edm::ParameterSet, edm::ParameterSet> puFactorizedIsoQCuts;
 
-    std::vector<reco::PFCandidatePtr> allPU;
+    vector<reco::PFCandidatePtr> allPU;
 
     /// make pu filtertered 
-    std::vector<reco::PFCandidatePtr> cleanPU =
+    vector<reco::PFCandidatePtr> cleanPU =
       pileupQcutsGeneralQCuts_->filterCandRefs(allPU);
 
     // Only select PU tracks inside the isolation cone.
-    std::vector<reco::PFCandidatePtr> isoPU_;
+    vector<reco::PFCandidatePtr> isoPU_;
     DRFilter deltaBetaFilter(tau.p4(), 0, 0.5); //0.5 is the cone size for isolation
     for ( auto const & cand : cleanPU ) {
       if ( deltaBetaFilter(cand) )  isoPU_.push_back(cand);
@@ -584,7 +644,7 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
      float nhIso     = 0.; 
      float sigPhoIso = 0.; 
-     std::cout<<"N Neutral Hadrons "<< tau.isolationNeutrHadrCands().size()<<std::endl;
+     //std::cout<<"N Neutral Hadrons "<< tau.isolationNeutrHadrCands().size()<<std::endl;
      for(auto cand : tau.isolationChargedHadrCands() ) {oldChIso  += cand->pt();}
      for(auto cand : tau.isolationNeutrHadrCands() )   {nhIso     += cand->pt();}
      for(auto cand : tau.signalGammaCands() )          {sigPhoIso += cand->pt();}
@@ -599,7 +659,7 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
      //create CHIso sum for 0,1,2,3,4,5,6,7,8, and all timing intervals
      //for each charge iso track check 1.) difference from central track, 2.) add to CHIso Sum interval
      //central cand, isocands, interval, value to return
-     std::vector<pat::PackedCandidate const*> packedCHIsoTauCands; 
+     vector<pat::PackedCandidate const*> packedCHIsoTauCands; 
      for(auto cand : tau.isolationChargedHadrCands() ){
        pat::PackedCandidate const* tempIsoCand = dynamic_cast<pat::PackedCandidate const*>(cand.get());
        packedCHIsoTauCands.push_back(tempIsoCand);
@@ -695,6 +755,7 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
    for(auto genTau : GenTaus){
       tauPt_     = -10;
       tauEta_    = -10;
+      tauPhi_    = -10;
       tauMass_   = -10;
       genTauPt_  = -10;
       genTauEta_ = -10;
@@ -769,38 +830,58 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
       dmf_=-10;
       goodReco_=0;
       genTauMatch_=0;
+      genMuonMatch_=0;
+      genElectronMatch_=0;
       
-      std::vector<const reco::GenParticle*> genTauDaughters;
+      vector<const reco::GenParticle*> genTauDaughters;
       findDaughters(genTau, genTauDaughters);
       reco::Candidate::LorentzVector genTauVis = GetVisibleP4(genTauDaughters);
       genTauPt_  = (float) genTauVis.pt();
       genTauEta_ = (float) genTauVis.eta();
+      genTauPhi_ = (float) genTauVis.eta();
       
      //std::cout<<" pt "<<genTauPt_<<" eta "<<genTauEta_<<std::endl;
+      nMatchedTaus_ = 0;
+      float minDR = 20;
+
       for(const pat::Tau &tau : *newTaus){
-	if (reco::deltaR(tau.eta(),tau.phi(),genTauVis.eta(),genTauVis.phi()) < 0.5 && tau.tauID("decayModeFinding")>0.5){
+	if (reco::deltaR(tau.eta(),tau.phi(),genTauVis.eta(),genTauVis.phi()) < 0.3 && tau.tauID("decayModeFinding")>0.5){
+	  nMatchedTaus_++;
+	  if(reco::deltaR(tau.eta(),tau.phi(),genTauVis.eta(),genTauVis.phi()) < minDR){
+	    genTauMatch_ = 1;
+	    tauPt_  = tau.pt();
+	    tauPhi_  = tau.phi();
+	    tauEta_ = tau.eta();
+	    dmf_ = tau.decayMode();
+	    tauMass_ = tau.mass();
 
-	  genTauMatch_ = 1;
-	  tauPt_  = tau.pt();
-	  tauEta_ = tau.eta();
-	  dmf_ = tau.decayMode();
-	  tauMass_ = tau.mass();
-
-	  //get the matched vertex
-	  int vtx_index = -1;
-	  // find the 4D vertex this muon is best associated to..
-	  float max_weight = 0.f;
-	  for( unsigned i = 0; i < vtxs->size(); ++i ) {
-	    const auto& vtx = (*vtxs)[i];      
-	    const float weight = vtx.trackWeight(tau.leadChargedHadrCand());
-	    if( weight > max_weight ) {
-	      max_weight = weight;
-	      vtx_index = i;
+	    for(auto genMuon : GenMuons){
+	      if(reco::deltaR(tau.eta(),tau.phi(),genMuon->eta(),genMuon->phi()) < 0.4){
+		genMuonMatch_ = 1;
+	      }
 	    }
-	  }
-	  //now do vtx variable filling
-	  vtxIndex_ = vtx_index;
 
+	    for(auto genElectron : GenElectrons){
+	      if(reco::deltaR(tau.eta(),tau.phi(),genElectron->eta(),genElectron->phi()) < 0.4){
+		genElectronMatch_ = 1;
+	      }
+	    }
+
+	    //get the matched vertex
+	    int vtx_index = -1;
+	    // find the 4D vertex this muon is best associated to..
+	    float max_weight = 0.f;
+	    for( unsigned i = 0; i < vtxs->size(); ++i ) {
+	      const auto& vtx = (*vtxs)[i];      
+	      const float weight = vtx.trackWeight(tau.leadChargedHadrCand());
+	      if( weight > max_weight ) {
+		max_weight = weight;
+		vtx_index = i;
+	      }
+	    }
+	    //now do vtx variable filling
+	    vtxIndex_ = vtx_index;
+	    
 	  const reco::Vertex& vtx = (vtx_index == -1 ? (*vtxs)[0] : (*vtxs)[vtx_index]);
 	  vtxX_ = vtx.x();
 	  vtxY_ = vtx.y();
@@ -873,7 +954,7 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
 	  goodReco_ = (bool) tau.tauID(tauID_) >0.5;
 	  //std::cout<<"iso0: "<<tauCHIso0_<<" iso1: "<<tauCHIso1_<<" iso8: "<<tauCHIso8_<<" iso: "<<tauCHIso_<<" isoOther: "<<tauCHIsoOther_<<std::endl;
-	  break;
+	  }
 	}
       }
      tree->Fill(); 
@@ -890,9 +971,11 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
       tauPt_     = -10;
       tauEta_    = -10;
+      tauPhi_    = -10;
       tauMass_   = -10;
       genTauPt_  = -10;
       genTauEta_ = -10;
+      genTauPhi_ = -10;
       tauCHIso_  = -10;
       tauCHIso0_ = -10;
       tauCHIso1_ = -10;
@@ -964,13 +1047,43 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
       dmf_=-10;
       goodReco_=0;
       genTauMatch_=0;
+
+      genMuonMatch_=0;
+      genElectronMatch_=0;
+
       genJetMatch_ = 0;
       genJetPt_ = -10;
       genJetEta_ = -10;
+      genJetPhi_ = -10;
+      isAMuon_ = 0;
+      isAElectron_ = 0;
       jetPt_  = (float) jet.pt();
       jetEta_ = (float) jet.eta();
+      jetPhi_ = (float) jet.phi();
       if(jetPt_<18)
 	continue;
+
+      for(auto genMuon : GenMuons){
+	if(reco::deltaR(jet.eta(),jet.phi(),genMuon->eta(),genMuon->phi()) < 0.4){
+	  genMuonMatch_ = 1;
+	}
+      }
+      
+      for(auto genElectron : GenElectrons){
+	if(reco::deltaR(jet.eta(),jet.phi(),genElectron->eta(),genElectron->phi()) < 0.4){
+	  genElectronMatch_ = 1;
+	}
+      }
+
+
+      jet_NHF_  = jet.neutralHadronEnergyFraction();
+      jet_NEMF_ = jet.neutralEmEnergyFraction();;
+      jet_CHF_  = jet.chargedHadronEnergyFraction();
+      jet_MUF_  = jet.muonEnergyFraction();
+      jet_CEMF_ = jet.chargedEmEnergyFraction();
+      jet_NumConst_ = jet.chargedMultiplicity() + jet.neutralMultiplicity();
+      jet_NumNeutralParticles_ = jet.neutralMultiplicity();
+      jet_CHM_  = jet.chargedMultiplicity();
 
       for (unsigned int iGenJet = 0; iGenJet < genJets->size() ; ++iGenJet){
 	reco::GenJetRef genJet(genJets, iGenJet);
@@ -978,16 +1091,29 @@ timingTausMiniAOD::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 	  genJetMatch_ = 1;
 	  genJetPt_ = genJet->pt();
 	  genJetEta_ = genJet->eta();
+	  genJetPhi_ = genJet->phi();
 	}
       }
       
       
+       for(unsigned int  i=0;i!=muons->size();++i){
+	 if(reco::deltaR(jet.eta(),jet.phi(),muons->at(i).eta(),muons->at(i).phi()) < 0.5 && muons->at(i).pt() > 8 ){
+	   isAMuon_ = 1;
+	 }
+       }
+       for(unsigned int  i=0;i!=electrons->size();++i){
+	 if(reco::deltaR(jet.eta(),jet.phi(),electrons->at(i).eta(),electrons->at(i).phi()) < 0.5 && electrons->at(i).pt() > 8){
+	   isAElectron_ = 1;
+	 }
+       }
+
      //std::cout<<" pt "<<genTauPt_<<" eta "<<genTauEta_<<std::endl;
       for(const pat::Tau &tau : *newTaus){
 	if (reco::deltaR(tau.eta(),tau.phi(),jet.eta(),jet.phi()) < 0.5 && tau.tauID("decayModeFinding")>0.5){
 
 	  tauPt_  = tau.pt();
 	  tauEta_ = tau.eta();
+	  tauPhi_ = tau.phi();
 	  dmf_ = tau.decayMode();
 	  tauMass_ = tau.mass();
 
@@ -1108,7 +1234,7 @@ timingTausMiniAOD::fillDescriptions(edm::ConfigurationDescriptions& descriptions
 
 
 //Gets visible 4-momentum of a particle from list of daughters
-reco::Candidate::LorentzVector timingTausMiniAOD::GetVisibleP4(std::vector<const reco::GenParticle*>& daughters){
+reco::Candidate::LorentzVector timingTausMiniAOD::GetVisibleP4(vector<const reco::GenParticle*>& daughters){
   reco::Candidate::LorentzVector p4_vis(0,0,0,0);
   for(size_t i = 0; i < daughters.size(); ++i){
     if (!isNeutrino(daughters[i]) && daughters[i]->status() == 1){  //list should include intermediate daughters, so check for status = 1
@@ -1120,7 +1246,7 @@ reco::Candidate::LorentzVector timingTausMiniAOD::GetVisibleP4(std::vector<const
 
 
 //Creates a vector of all (including intermediate) daughters for a given mother particle
-void timingTausMiniAOD::findDaughters(const reco::GenParticle* mother, std::vector<const reco::GenParticle*>& daughters)
+void timingTausMiniAOD::findDaughters(const reco::GenParticle* mother, vector<const reco::GenParticle*>& daughters)
 {
   unsigned numDaughters = mother->numberOfDaughters();
   if (numDaughters == 0) std::cout << " none ";
@@ -1141,7 +1267,7 @@ bool timingTausMiniAOD::isNeutrino(const reco::Candidate* daughter)
   return (TMath::Abs(daughter->pdgId()) == 12 || TMath::Abs(daughter->pdgId()) == 14 || TMath::Abs(daughter->pdgId()) == 16 || TMath::Abs(daughter->pdgId()) == 18);
 }
 
-double timingTausMiniAOD::getTimedCHIsoSum( pat::PackedCandidate const* leadTauCand, std::vector<pat::PackedCandidate const*> isolationCands, float interval, float & n_tracks)
+double timingTausMiniAOD::getTimedCHIsoSum( pat::PackedCandidate const* leadTauCand, vector<pat::PackedCandidate const*> isolationCands, float interval, float & n_tracks)
 {
   float sum = 0;
   n_tracks = 0;

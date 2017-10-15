@@ -4,7 +4,7 @@ cat sub-runTauTiming.py > SUBtiming.py
 cat submit.py >> SUBtiming.py
 
 
-for dir in DYJetsToLL_0PU  DYJetsToLL_200PU #TTBar-RelVal-0  TTBar-RelVal-140  TTBar-RelVal-200 ZTT-RelVal-0  ZTT-RelVal-140   ZTT-RelVal-200  QCDMuEnriched_realistic
+for dir in TTbar_200PU  TTbar_0PU  QCD_200PU
 do 
     echo " "
     echo "====================" $dir "========================="
