@@ -4,7 +4,7 @@ cat sub-runTauTiming.py > SUBtiming.py
 cat submit.py >> SUBtiming.py
 
 
-for dir in TTbar_200PU  TTbar_0PU  QCD_200PU
+for dir in QCD_0PU #TTbar_200PU  TTbar_0PU  QCD_200PU
 do 
     echo " "
     echo "====================" $dir "========================="
